@@ -1,5 +1,4 @@
-﻿using LylekGames;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -84,12 +83,6 @@ public class TransformUtilityWindow : EditorWindow
         if (GUILayout.Button("Rename after Parent Hierarchy"))
         {
             RenameAfterParentHigherarchy();
-        }
-
-        EditorGUILayout.LabelField("// Gameobjects Selection");
-        if (GUILayout.Button("Combine Static Meshes"))
-        {
-            CombineStaticMeshes();
         }
 
         EditorGUILayout.EndScrollView();
@@ -252,21 +245,6 @@ public class TransformUtilityWindow : EditorWindow
             }
 
             Selection.transforms[i].name = parentHierarchyNames + objectName;
-        }
-    }
-    private void CombineStaticMeshes()
-    {
-        if (Selection.gameObjects.Length <= 0) return;
-
-        foreach (GameObject objectInSlelection in Selection.gameObjects)
-        {
-            CombineMeshes myCombine;
-            if (!objectInSlelection.GetComponent<CombineMeshes>())
-                myCombine = objectInSlelection.AddComponent<CombineMeshes>();
-            else
-                myCombine = objectInSlelection.GetComponent<CombineMeshes>();
-            myCombine.Start();
-            myCombine.EnableMeshNewCollider();
         }
     }
     private void PlaceObjectsInLine()
