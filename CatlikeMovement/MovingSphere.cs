@@ -9,12 +9,13 @@ public class MovingSphere : MonoBehaviour
 	Transform playerInputSpace = default;
 	[SerializeField, Range(0f, 100f)]
 	float maxSpeed = 10f;
-	Vector3 velocity, desiredVelocity;
+	Vector3 velocity, desiredVelocity, connectionVelocity;
+	Vector3 connectionWorldPosition, connectionLocalPosition;
 	[SerializeField, Range(0f, 100f)]
 	float maxAcceleration = 10f, maxAirAcceleration = 1f;
 	[SerializeField, Range(0f, 1f)]
 	float bounciness = 0.5f;
-	Rigidbody body;
+	Rigidbody body, connectedBody, previousConnectedBody;
 	bool desiredJump;
 	[SerializeField, Range(0f, 10f)]
 	float jumpHeight = 2f;
@@ -107,12 +108,35 @@ public class MovingSphere : MonoBehaviour
 		{
 			contactNormal = Vector3.up;
 		}
+		if (connectedBody)
+		{
+			if (connectedBody.isKinematic || connectedBody.mass >= body.mass)
+			{
+				UpdateConnectionState();
+			}
+		}
+	}
+
+	void UpdateConnectionState()
+	{
+		if (connectedBody == previousConnectedBody)
+		{
+			Vector3 connectionMovement =
+				connectedBody.transform.TransformPoint(connectionLocalPosition) - connectionWorldPosition;
+			connectionVelocity = connectionMovement / Time.deltaTime;
+		}
+		connectionWorldPosition = body.position;
+		connectionLocalPosition = connectedBody.transform.InverseTransformPoint(
+			connectionWorldPosition
+		);
 	}
 
 	void ClearState()
 	{
 		groundContactCount = steepContactCount = 0;
-		contactNormal = steepNormal = Vector3.zero;
+		contactNormal = steepNormal = connectionVelocity = Vector3.zero;
+		previousConnectedBody = connectedBody;
+		connectedBody = null;
 	}
 
 	void Jump()
@@ -170,11 +194,16 @@ public class MovingSphere : MonoBehaviour
 			{
 				groundContactCount += 1;
 				contactNormal += normal;
+				connectedBody = collision.rigidbody;
 			}
 			else if (normal.y > -0.01f)
 			{
 				steepContactCount += 1;
 				steepNormal += normal;
+				if (groundContactCount == 0)
+				{
+					connectedBody = collision.rigidbody;
+				}
 			}
 		}
 	}
@@ -189,8 +218,9 @@ public class MovingSphere : MonoBehaviour
 		Vector3 xAxis = ProjectOnContactPlane(Vector3.right).normalized;
 		Vector3 zAxis = ProjectOnContactPlane(Vector3.forward).normalized;
 
-		float currentX = Vector3.Dot(velocity, xAxis);
-		float currentZ = Vector3.Dot(velocity, zAxis);
+		Vector3 relativeVelocity = velocity - connectionVelocity;
+		float currentX = Vector3.Dot(relativeVelocity, xAxis);
+		float currentZ = Vector3.Dot(relativeVelocity, zAxis);
 
 		float acceleration = OnGround ? maxAcceleration : maxAirAcceleration;
 		float maxSpeedChange = acceleration * Time.deltaTime;
@@ -228,6 +258,7 @@ public class MovingSphere : MonoBehaviour
 		{
 			velocity = (velocity - hit.normal * dot).normalized * speed;
 		}
+		connectedBody = hit.rigidbody;
 		return true;
 	}
 
