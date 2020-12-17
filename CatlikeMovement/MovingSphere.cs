@@ -8,28 +8,33 @@ public class MovingSphere : MonoBehaviour
 	[SerializeField]
 	Transform playerInputSpace = default;
 	[SerializeField, Range(0f, 100f)]
-	float maxSpeed = 10f;
-	Vector3 velocity, desiredVelocity, connectionVelocity;
+	float maxSpeed = 10f, maxClimbSpeed = 2f;
+	Vector2 playerInput;
+
+	Vector3 velocity, connectionVelocity;
 	Vector3 connectionWorldPosition, connectionLocalPosition;
 	[SerializeField, Range(0f, 100f)]
-	float maxAcceleration = 10f, maxAirAcceleration = 1f;
+	float
+		maxAcceleration = 10f,
+		maxAirAcceleration = 1f,
+		maxClimbAcceleration = 20f;
 	[SerializeField, Range(0f, 1f)]
 	float bounciness = 0.5f;
 	Rigidbody body, connectedBody, previousConnectedBody;
-	bool desiredJump;
+	bool desiredJump, desiresClimbing;
 	[SerializeField, Range(0f, 10f)]
 	float jumpHeight = 2f;
 	int groundContactCount, steepContactCount;
 	bool OnGround => groundContactCount > 0;
 	bool OnSteep => steepContactCount > 0;
-	bool Climbing => climbContactCount > 0;
+	bool Climbing => climbContactCount > 0 && stepsSinceLastJump > 2;
 	[SerializeField, Range(0, 5)]
 	int maxAirJumps = 0;
 	int jumpPhase;
 	[SerializeField, Range(0f, 90f)]
 	float maxGroundAngle = 25f, maxStairsAngle = 50f;
 	float minGroundDotProduct, minStairsDotProduct, minClimbDotProduct;
-	Vector3 contactNormal, steepNormal, climbNormal;
+	Vector3 contactNormal, steepNormal, climbNormal, lastClimbNormal;
 	int stepsSinceLastGrounded, stepsSinceLastJump, climbContactCount;
 	[SerializeField, Range(0f, 100f)]
 	float maxSnapSpeed = 100f;
@@ -40,6 +45,9 @@ public class MovingSphere : MonoBehaviour
 	[SerializeField, Range(90, 180)]
 	float maxClimbAngle = 140f;
 	Vector3 upAxis, rightAxis, forwardAxis;
+	[SerializeField]
+	Material normalMaterial = default, climbingMaterial = default;
+	MeshRenderer meshRenderer;
 
 	void OnValidate()
 	{
@@ -51,12 +59,12 @@ public class MovingSphere : MonoBehaviour
 	{
 		body = GetComponent<Rigidbody>();
 		body.useGravity = false;
+		meshRenderer = GetComponent<MeshRenderer>();
 		OnValidate();
 	}
 
 	void Update()
 	{
-		Vector2 playerInput;
 		playerInput.x = Input.GetAxis("Horizontal");
 		playerInput.y = Input.GetAxis("Vertical");
 		playerInput = Vector2.ClampMagnitude(playerInput, 1f);
@@ -71,17 +79,18 @@ public class MovingSphere : MonoBehaviour
 			Vector3 right = playerInputSpace.right;
 			right.y = 0f;
 			right.Normalize();
-			desiredVelocity =
-				(forward * playerInput.y + right * playerInput.x) * maxSpeed;
+			//desiredVelocity = (forward * playerInput.y + right * playerInput.x) * maxSpeed;
 		}
 		else
 		{
 			rightAxis = ProjectDirectionOnPlane(Vector3.right, upAxis);
 			forwardAxis = ProjectDirectionOnPlane(Vector3.forward, upAxis);
 		}
-		desiredVelocity = new Vector3(playerInput.x, 0f, playerInput.y) * maxSpeed;
 
 		desiredJump |= Input.GetButtonDown("Jump");
+		desiresClimbing = Input.GetButton("Climb");
+
+		meshRenderer.material = Climbing ? climbingMaterial : normalMaterial;
 	}
 
     private void FixedUpdate()
@@ -95,7 +104,26 @@ public class MovingSphere : MonoBehaviour
 			desiredJump = false;
 			Jump(gravity);
 		}
-		velocity += gravity * Time.deltaTime;
+		if (Climbing)
+		{
+			velocity -= contactNormal * (maxClimbAcceleration * 0.9f * Time.deltaTime);
+		}
+		else if (OnGround && velocity.sqrMagnitude < 0.01f)
+		{
+			velocity +=
+				contactNormal *
+				(Vector3.Dot(gravity, contactNormal) * Time.deltaTime);
+		}
+		else if (desiresClimbing && OnGround)
+		{
+			velocity +=
+				(gravity - contactNormal * (maxClimbAcceleration * 0.9f)) *
+				Time.deltaTime;
+		}
+		else
+		{
+			velocity += gravity * Time.deltaTime;
+		}
 		body.velocity = velocity;
 
 		ClearState();
@@ -209,6 +237,7 @@ public class MovingSphere : MonoBehaviour
 			{
 				groundContactCount += 1;
 				contactNormal += normal;
+				lastClimbNormal = normal;
 				connectedBody = collision.rigidbody;
 			}
 			else
@@ -222,7 +251,7 @@ public class MovingSphere : MonoBehaviour
 						connectedBody = collision.rigidbody;
 					}
 				}
-				if (normal.y >= minClimbDotProduct &&
+				if (desiresClimbing && upDot >= minClimbDotProduct &&
 					(climbMask & (1 << layer)) != 0)
 				{
 					climbContactCount += 1;
@@ -240,20 +269,35 @@ public class MovingSphere : MonoBehaviour
 
 	void AdjustVelocity()
 	{
-		Vector3 xAxis = ProjectDirectionOnPlane(rightAxis, contactNormal);
-		Vector3 zAxis = ProjectDirectionOnPlane(forwardAxis, contactNormal);
+		float acceleration, speed;
+		Vector3 xAxis, zAxis;
+		if (Climbing)
+		{
+			acceleration = maxClimbAcceleration;
+			speed = maxClimbSpeed;
+			xAxis = Vector3.Cross(contactNormal, upAxis);
+			zAxis = upAxis;
+		}
+		else
+		{
+			acceleration = OnGround ? maxAcceleration : maxAirAcceleration;
+			speed = OnGround && desiresClimbing ? maxClimbSpeed : maxSpeed;
+			xAxis = rightAxis;
+			zAxis = forwardAxis;
+		}
+		xAxis = ProjectDirectionOnPlane(xAxis, contactNormal);
+		zAxis = ProjectDirectionOnPlane(zAxis, contactNormal);
 
 		Vector3 relativeVelocity = velocity - connectionVelocity;
 		float currentX = Vector3.Dot(relativeVelocity, xAxis);
 		float currentZ = Vector3.Dot(relativeVelocity, zAxis);
 
-		float acceleration = OnGround ? maxAcceleration : maxAirAcceleration;
 		float maxSpeedChange = acceleration * Time.deltaTime;
 
 		float newX =
-			Mathf.MoveTowards(currentX, desiredVelocity.x, maxSpeedChange);
+			Mathf.MoveTowards(currentX, playerInput.x * speed, maxSpeedChange);
 		float newZ =
-			Mathf.MoveTowards(currentZ, desiredVelocity.z, maxSpeedChange);
+			Mathf.MoveTowards(currentZ, playerInput.y * speed, maxSpeedChange);
 
 		velocity += xAxis * (newX - currentX) + zAxis * (newZ - currentZ);
 	}
@@ -314,7 +358,16 @@ public class MovingSphere : MonoBehaviour
 	{
 		if (Climbing)
 		{
-			groundContactCount = climbContactCount;
+			if (climbContactCount > 1)
+			{
+				climbNormal.Normalize();
+				float upDot = Vector3.Dot(upAxis, climbNormal);
+				if (upDot >= minGroundDotProduct)
+				{
+					climbNormal = lastClimbNormal;
+				}
+			}
+			groundContactCount = 1;
 			contactNormal = climbNormal;
 			return true;
 		}
