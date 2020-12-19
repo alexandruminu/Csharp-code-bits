@@ -19,8 +19,6 @@ public class MovingSphere : MonoBehaviour
 		maxAirAcceleration = 1f,
 		maxClimbAcceleration = 20f,
 		maxSwimAcceleration = 5f;
-	[SerializeField, Range(0f, 1f)]
-	float bounciness = 0.5f;
 	Rigidbody body, connectedBody, previousConnectedBody;
 	bool desiredJump, desiresClimbing;
 	[SerializeField, Range(0f, 10f)]
@@ -48,7 +46,12 @@ public class MovingSphere : MonoBehaviour
 	Vector3 upAxis, rightAxis, forwardAxis;
 	[SerializeField]
 	Material normalMaterial = default, climbingMaterial = default, swimmingMaterial = default;
+	[SerializeField]
 	MeshRenderer meshRenderer;
+	[SerializeField]
+	Animator animator;
+	[SerializeField]
+	Transform graphicsTransform;
 
 	[SerializeField]
 	float submergenceOffset = 0.5f;
@@ -63,6 +66,8 @@ public class MovingSphere : MonoBehaviour
 	[SerializeField, Range(0.01f, 1f)]
 	float swimThreshold = 0.5f;
 	bool Swimming => submergence >= swimThreshold;
+	Vector3 lastContactNormal, lastSteepNormal;
+
 
 	void OnValidate()
 	{
@@ -74,7 +79,6 @@ public class MovingSphere : MonoBehaviour
 	{
 		body = GetComponent<Rigidbody>();
 		body.useGravity = false;
-		meshRenderer = GetComponent<MeshRenderer>();
 		OnValidate();
 	}
 
@@ -112,7 +116,38 @@ public class MovingSphere : MonoBehaviour
 			desiresClimbing = Input.GetButton("Climb");
 		}
 
+		UpdateStateMaterial();
+		UpdateAnimator();
+		UpdateGraphicsTransform();
+	}
+
+	void UpdateStateMaterial()
+	{
 		meshRenderer.material = Climbing ? climbingMaterial : Swimming ? swimmingMaterial : normalMaterial;
+	}
+
+	void UpdateGraphicsTransform()
+    {
+		if (body.velocity.magnitude > 0.001f && playerInput != Vector3.zero)
+        {
+			Vector3 target = graphicsTransform.position + body.velocity; ;
+			if (OnGround || Climbing)
+			{
+				
+			}
+			else
+			{
+				target = graphicsTransform.position + body.velocity;
+				target.y = graphicsTransform.position.y;
+			}
+			graphicsTransform.LookAt(target, lastContactNormal);
+		}
+	}
+
+	void UpdateAnimator()
+    {
+		animator.SetFloat("MoveSpeed", playerInput != Vector3.zero ? body.velocity.magnitude : 0f);
+		animator.SetBool("Grounded", OnGround || OnSteep || Climbing);
 	}
 
     private void FixedUpdate()
@@ -205,6 +240,8 @@ public class MovingSphere : MonoBehaviour
 
 	void ClearState()
 	{
+		lastContactNormal = contactNormal;
+		lastSteepNormal = steepNormal;
 		groundContactCount = steepContactCount = climbContactCount = 0;
 		contactNormal = steepNormal = connectionVelocity = climbNormal = Vector3.zero; ;
 		previousConnectedBody = connectedBody;
@@ -251,6 +288,7 @@ public class MovingSphere : MonoBehaviour
 		}
 		velocity += jumpDirection * jumpSpeed;
 	}
+
 	void OnCollisionEnter(Collision collision)
 	{
 		EvaluateCollision(collision);
