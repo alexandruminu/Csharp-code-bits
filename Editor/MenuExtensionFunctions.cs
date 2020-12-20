@@ -11,6 +11,13 @@ public class MenuExtensionFunctions
         Debug.Log($"{target.name} world pos: {target.position}");
     }
 
+    [MenuItem("CONTEXT/Transform/Round World Position")]
+    static void RoundWorldPosition(MenuCommand command)
+    {
+        Transform target = (Transform)command.context;
+        target.RoundPosition();
+    }
+
     /*
     [MenuItem("Transform Utility/Place In Circle")]
     static void LogSelectedTransformName()
