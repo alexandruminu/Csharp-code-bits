@@ -1,38 +1,27 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class ObjectPool<T> : MonoBehaviour where T : Component
+public class ObjectPool
 {
-    [SerializeField]
-    private T prefab;
+    public GameObject prefab;
+    public Queue<GameObject> objects = new Queue<GameObject>();
 
-    public static ObjectPool<T> Instance { get; private set; }
-    private Queue<T> objects = new Queue<T>();
-
-    private void Awake()
+    public ObjectPool(GameObject _prefab)
     {
-        Instance = this;
+        prefab = _prefab;
     }
-
-    public T Get()
+    public GameObject Get(bool active)
     {
         if(objects.Count == 0)
         {
-            AddObject();
+            ObjectPoolManager.instance.AddObjectToPool(this, active);
         }
         return objects.Dequeue();
     }
 
-    public void ReturnToPool(T objectToReturn)
+    public void ReturnToPool(GameObject objectToReturn)
     {
         objectToReturn.gameObject.SetActive(false);
         objects.Enqueue(objectToReturn);
-    }
-
-    public void AddObject()
-    {
-        var newObject = Instantiate(prefab);
-        newObject.gameObject.SetActive(false);
-        objects.Enqueue(newObject);
     }
 }

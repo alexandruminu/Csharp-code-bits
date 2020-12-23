@@ -28,6 +28,8 @@ public class PlayerPickupSystem : MonoBehaviour
         if(registeredItems.Count == 0) { return; }
 
         container.AddItem(registeredItems[0]);
+        registeredItems[0].OutlineOff();
+        registeredItems.Remove(registeredItems[0]);
     }
     void Place()
     {
@@ -41,6 +43,7 @@ public class PlayerPickupSystem : MonoBehaviour
         Item item = col.GetComponent<Item>();
         if(registeredItems.Contains(item) == true) { return; }
 
+        item.OutlineOn();
         registeredItems.Add(item);
     }
     public void UnregisterItem(Collider col)
@@ -48,6 +51,7 @@ public class PlayerPickupSystem : MonoBehaviour
         Item item = col.GetComponent<Item>();
         if (registeredItems.Contains(item) == false) { return; }
 
+        item.OutlineOff();
         registeredItems.Remove(item);
     }
 }

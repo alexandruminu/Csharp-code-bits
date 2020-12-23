@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Animations;
 
 public class ItemContainer : MonoBehaviour
 {
@@ -15,9 +16,13 @@ public class ItemContainer : MonoBehaviour
     public void AddItem(Item _item)
     {
         item = _item;
-        item.transform.SetParent(socket);
+        //item.transform.SetParent(socket);
+        ConstraintSource source = new ConstraintSource();
+        source.sourceTransform = socket;
+        source.weight = 1f;
+        _item.parentConstraint.AddSource(source);
         _item.HandlePickUp();
-        item.transform.localPosition = Vector3.zero;
+        //item.transform.localPosition = Vector3.zero;
     }
 
     public void RemoveItem(Item _item)

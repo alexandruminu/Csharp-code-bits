@@ -10,15 +10,14 @@ public class Factory : MonoBehaviour
 
     private void Start()
     {
-        //ingredientsInventory = new List<RecipeRequirement>(recipe.requiredInput);
-        for (int i = 0; i < recipe.requiredInput.Count; i++)
+        for (int i = 0; i < recipe.input.Count; i++)
         {
-            ingredientsInventory.Add(recipe.requiredInput[i].Copy());
+            ingredientsInventory.Add(recipe.input[i].Copy());
             ingredientsInventory[i].ingredientAmmount = 0;
         }
     }
 
-    public bool AddIngredient(Ingredient ing)
+    public bool AddIngredient(Item ing)
     {
         if (recipe.ContainsIngredientType(ing.ingredientType))
         {
@@ -29,16 +28,38 @@ public class Factory : MonoBehaviour
                     ingredientsInventory[i].ingredientAmmount++;
                 }
             }
-            if (recipe.CheckComplete(ingredientsInventory))
-            {
-                ObjectPoolManager.instance.SpawnObject(recipe.output, objectSpawnPoint.position);
-                for (int i = 0; i < recipe.requiredInput.Count; i++)
-                {
-                    ingredientsInventory[i].ingredientAmmount -= recipe.requiredInput[i].ingredientAmmount;
-                }
-            }
+
+            CheckCompleteRecipe();
+
             return true;
         }
         return false;
+    }
+
+    void CheckCompleteRecipe()
+    {
+        if (recipe.CheckComplete(ingredientsInventory))
+        {
+            for (int i = 0; i < recipe.output.Count; i++)
+            {
+                ObjectPoolManager.instance.SpawnObject(recipe.output[i], objectSpawnPoint.position);
+            }
+            for (int i = 0; i < recipe.input.Count; i++)
+            {
+                ingredientsInventory[i].ingredientAmmount -= recipe.input[i].ingredientAmmount;
+            }
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.TryGetComponent(out Item item))
+        {
+            if (AddIngredient(item) == false) { return; }
+            else
+            {
+                item.gameObject.SetActive(false);
+            }
+        }
     }
 }

@@ -5,10 +5,10 @@ using UnityEngine;
 [System.Serializable]
 public class RecipeRequirement
 {
-    public Ingredient.Type ingredientType;
+    public IngredientType ingredientType;
     public int ingredientAmmount;
 
-    public RecipeRequirement(Ingredient.Type type, int ammount)
+    public RecipeRequirement(IngredientType type, int ammount)
     {
         ingredientType = type;
         ingredientAmmount = ammount;
