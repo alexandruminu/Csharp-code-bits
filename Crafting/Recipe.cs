@@ -23,6 +23,14 @@ public class Recipe : ScriptableObject
 
     public bool CheckComplete(List<RecipeRequirement> inventory)
     {
-        return input.Except(inventory).ToList().Count > 0;
+        for (int i = 0; i < input.Count; i++)
+        {
+            if(input[i].ingredientAmmount != inventory[i].ingredientAmmount)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -46,7 +46,7 @@ public class Factory : MonoBehaviour
             }
             for (int i = 0; i < recipe.input.Count; i++)
             {
-                ingredientsInventory[i].ingredientAmmount -= recipe.input[i].ingredientAmmount;
+                ingredientsInventory[i].ingredientAmmount = 0;
             }
         }
     }

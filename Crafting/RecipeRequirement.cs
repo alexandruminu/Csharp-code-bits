@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -17,5 +18,13 @@ public class RecipeRequirement
     public RecipeRequirement Copy()
     {
         return new RecipeRequirement(ingredientType, ingredientAmmount);
+    }
+
+    public bool IsEqualTo(RecipeRequirement other)
+    {
+        if (other is null)
+            return false;
+
+        return this.ingredientType == other.ingredientType && this.ingredientAmmount == other.ingredientAmmount;
     }
 }

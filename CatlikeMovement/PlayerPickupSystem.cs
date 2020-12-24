@@ -29,7 +29,6 @@ public class PlayerPickupSystem : MonoBehaviour
 
         container.AddItem(registeredItems[0]);
         registeredItems[0].OutlineOff();
-        registeredItems.Remove(registeredItems[0]);
     }
     void Place()
     {

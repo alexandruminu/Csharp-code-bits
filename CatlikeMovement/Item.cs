@@ -22,7 +22,7 @@ public class Item : MonoBehaviour
 
     public void HandlePickUp()
     {
-        colliderComponent.isTrigger = true;
+        colliderComponent.enabled = false;
         rbComponent.isKinematic = true;
         parentConstraint.constraintActive = true;
         //OutlineOff();
@@ -30,7 +30,7 @@ public class Item : MonoBehaviour
 
     public void HandlePlace()
     {
-        colliderComponent.isTrigger = false;
+        colliderComponent.enabled = true;
         rbComponent.isKinematic = false;
         for (int i = 0; i < parentConstraint.sourceCount; i++)
         {
